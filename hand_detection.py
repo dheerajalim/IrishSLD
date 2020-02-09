@@ -106,6 +106,9 @@ class HandDetection:
 
             k = cv2.waitKey(1)
             if k == 27:  # Closing the program on press of Esc key
+                np.save('lower_bound', lower_bound)
+                np.save('upper_bound', upper_bound)
+                # a = np.load('outfile_name.npy')
                 break
 
         self.cap.release()
