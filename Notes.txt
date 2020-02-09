@@ -1,0 +1,3 @@
+Y – Luminance or Luma component obtained from RGB after gamma correction.
+Cr = R – Y ( how far is the red component from Luma ).
+Cb = B – Y ( how far is the blue component from Luma ).
