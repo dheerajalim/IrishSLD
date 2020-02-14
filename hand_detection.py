@@ -19,10 +19,12 @@ class HandDetection:
     def __init__(self):
         # Capturing the video from the camera
         self.cap = cv2.VideoCapture('http://192.168.2.2:4747/video')
+        # self.cap = cv2.VideoCapture('http://localhost:4747/mjpegfeed?640x480')
         if not self.cap.read()[0]:
             self.cap = cv2.VideoCapture(0)
 
         cv2.namedWindow('Track Bar')  # window for the track bar
+        # cv2.resizeWindow('Track Bar', 500, 300)
         self.create_trackbar()
 
     def nothing(self, x):
@@ -105,10 +107,12 @@ class HandDetection:
             cv2.imshow("Skin Toner", np.hstack([roi, skin]))  # Displaying the ROI and Skin Detected Image
 
             k = cv2.waitKey(1)
-            if k == 27:  # Closing the program on press of Esc key
+
+            if k == ord('s'):  # Pressing s , saves the current YCrCb color values
                 np.save('lower_bound', lower_bound)
                 np.save('upper_bound', upper_bound)
-                # a = np.load('outfile_name.npy')
+
+            if k == 27:  # Closing the program on press of Esc key
                 break
 
         self.cap.release()
