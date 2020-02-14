@@ -23,6 +23,8 @@ class HandDetection:
         if not self.cap.read()[0]:
             self.cap = cv2.VideoCapture(0)
 
+        self.kernel = np.ones((5, 5), np.uint8)  # Kernel for the morphological transformation
+
         cv2.namedWindow('Track Bar')  # window for the track bar
         # cv2.resizeWindow('Track Bar', 500, 300)
         self.create_trackbar()
@@ -53,7 +55,6 @@ class HandDetection:
     @staticmethod
     def get_trackbar():
         """
-
         :return: The list of upper values and lower values of YCrCb color
         """
 
@@ -72,6 +73,14 @@ class HandDetection:
 
         return lower_bound_values, upper_bound_values
 
+    def morphological_transformations(self, skin):
+
+        dilation = cv2.dilate(skin, self.kernel, iterations=2)
+        erode = cv2.erode(dilation, self.kernel, iterations=2)
+        median_blur = cv2.medianBlur(erode, 7)
+
+        return median_blur
+
     def skin_detection(self):
         """
         The method takes the frame from the live video feed and from the values of the trackbar
@@ -81,11 +90,12 @@ class HandDetection:
 
         while True:
             _, img = self.cap.read()  # reading the captured frame
+            img = cv2.flip(img, 1)
             # cv2.rectangle(img, (300, 100), (600, 400), (255, 0, 0)) # creating a rectangle on the
-            cv2.rectangle(img, (30, 50), (330, 350), (255, 0, 0))  # creating a rectangle on the frame
+            cv2.rectangle(img, (300, 50), (600, 350), (255, 0, 0))  # creating a rectangle on the frame
             # roi = img[100:400, 300:600]
-            roi = img[50:350, 30:330]  # Getting the region of interest
-            roi = cv2.flip(roi, 1)  # Flipping the image
+            roi = img[50:350, 300:600]  # Getting the region of interest
+            # roi = cv2.flip(roi, 1)  # Flipping the image
 
             lower_bound, upper_bound = self.get_trackbar()  # Getting the tracker values
 
@@ -103,7 +113,9 @@ class HandDetection:
 
             skin = cv2.bitwise_and(roi, roi, mask=skin_region_mask)  # Performing bitwise and operation on the image
 
-            cv2.imshow('Image', cv2.flip(img, 1))  # Showing the real image
+            skin = self.morphological_transformations(skin)  # Adding improvements over the detected skin
+
+            cv2.imshow('Image', img)  # Showing the real image
             cv2.imshow("Skin Toner", np.hstack([roi, skin]))  # Displaying the ROI and Skin Detected Image
 
             k = cv2.waitKey(1)
