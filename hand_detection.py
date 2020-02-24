@@ -19,7 +19,7 @@ class HandDetection:
     """
 
     def __init__(self):
-        self.cap = capture_video()
+        self.cap = capture_video()  # Capturing the Video
         self.kernel = morphological_kernel()  # Kernel for the morphological transformation
         cv2.namedWindow('Track Bar')  # window for the track bar
         # cv2.resizeWindow('Track Bar', 500, 300)

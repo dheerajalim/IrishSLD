@@ -20,7 +20,7 @@ def capture_video():
 
 
 def morphological_kernel():
-    kernel = np.ones((5, 5), np.uint8)
+    kernel = np.ones((5, 5), np.uint8)  # Creating the Kernel definition
     return kernel
 
 
