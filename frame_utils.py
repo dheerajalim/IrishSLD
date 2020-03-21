@@ -7,7 +7,7 @@ Usage : Contains the utility functions for the video frames
 
 import cv2
 import numpy as np
-from config import *
+from .config import *
 
 
 def capture_video():
@@ -20,7 +20,7 @@ def capture_video():
 
 
 def morphological_kernel():
-    kernel = np.ones((5, 5), np.uint8)  # Creating the Kernel definition
+    kernel = np.ones((5, 5), np.uint8)
     return kernel
 
 
@@ -52,7 +52,8 @@ def frame_color_masking(roi, lower_bound, upper_bound):
 def load_bounds():
     """Using the lower and upper bounds saved from the hand_detection.py"""
 
-    lower_bound = np.load('lower_bound.npy')
-    upper_bound = np.load('upper_bound.npy')
+    lower_bound = np.load(LOWER_BOUND)
+    upper_bound = np.load(UPPER_BOUND)
 
     return lower_bound, upper_bound
+

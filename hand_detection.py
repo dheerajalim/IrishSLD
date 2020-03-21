@@ -5,10 +5,10 @@ Date : 09-02-2020
 Usage : Detection of Skin from the Video frame
 """
 
-# import cv2
-# import numpy as np
+import cv2
+import numpy as np
 import pymsgbox
-from frame_utils import *
+from IrishSLD_local.frame_utils import *
 
 
 class HandDetection:
@@ -19,11 +19,22 @@ class HandDetection:
     """
 
     def __init__(self):
-        self.cap = capture_video()  # Capturing the Video
-        self.kernel = morphological_kernel()  # Kernel for the morphological transformation
+        # # Capturing the video from the camera
+        # self.cap = cv2.VideoCapture('http://192.168.2.2:4747/video')
+        # # self.cap = cv2.VideoCapture('http://localhost:4747/mjpegfeed?640x480')
+        # if not self.cap.read()[0]:
+        #     self.cap = cv2.VideoCapture(0)
+
+        self.cap = capture_video()
+
+        # self.kernel = np.ones((5, 5), np.uint8) # Kernel for the morphological transformation
+        self.kernel = morphological_kernel() # Kernel for the morphological transformation
+
         cv2.namedWindow('Track Bar')  # window for the track bar
         # cv2.resizeWindow('Track Bar', 500, 300)
         self.create_trackbar()
+
+
 
     def nothing(self, x):
         pass
@@ -69,6 +80,14 @@ class HandDetection:
 
         return lower_bound_values, upper_bound_values
 
+    # def morphological_transformations(self, skin):
+    #
+    #     dilation = cv2.dilate(skin, self.kernel, iterations=2)
+    #     erode = cv2.erode(dilation, self.kernel, iterations=2)
+    #     median_blur = cv2.medianBlur(erode, 7)
+    #
+    #     return median_blur
+
     def skin_detection(self):
         """
         The method takes the frame from the live video feed and from the values of the trackbar
@@ -78,8 +97,19 @@ class HandDetection:
 
         while True:
             _, img = self.cap.read()  # reading the captured frame
+            # img = cv2.flip(img,1)
+            # # cv2.rectangle(img, (300, 100), (600, 400), (255, 0, 0)) # creating a rectangle on the
+            # cv2.rectangle(img, (300, 50), (600, 350), (255, 0, 0))  # creating a rectangle on the frame
+            # # roi = img[100:400, 300:600]
+            # roi = img[50:350, 300:600]  # Getting the region of interest
+            # # roi = cv2.flip(roi, 1)  # Flipping the image
+            '''
+            testing
+            '''
             img, roi = video_roi(img)
-
+            '''
+            testing ends
+            '''
             cv2.putText(img, "Press S to save the detected skin", (10, 460), cv2.FONT_HERSHEY_DUPLEX, 0.4, (0, 0, 0))
             lower_bound, upper_bound = self.get_trackbar()  # Getting the tracker values
 
@@ -87,18 +117,31 @@ class HandDetection:
             lower_bound = np.array(lower_bound, np.uint8)
             upper_bound = np.array(upper_bound, np.uint8)
 
-            skin = frame_color_masking(roi, lower_bound, upper_bound)  # changing color and performing masking
-            skin = morphological_transformations(skin, self.kernel, 2, 7)  # Adding improvements over the detected skin
+            # ycrcb_image = cv2.cvtColor(roi, cv2.COLOR_BGR2YCR_CB)  # changing BGR to YCrCb color
+            #
+            # '''
+            # The inRange function simply returns a binary mask, where white pixels (255) represent pixels that fall into
+            # the upper and lower limit range and black pixels (0) do not.
+            # '''
+            # skin_region_mask = cv2.inRange(ycrcb_image, lower_bound, upper_bound)
+            #
+            # skin = cv2.bitwise_and(roi, roi, mask=skin_region_mask)  # Performing bitwise and operation on the image
+
+            '''testing'''
+            skin = frame_color_masking(roi, lower_bound, upper_bound)
+            '''testing ends'''
+            skin = morphological_transformations(skin, self.kernel, 2, 7)     # Adding improvements over the detected skin
 
             cv2.imshow('Image', img)  # Showing the real image
             cv2.imshow("Skin Toner", np.hstack([roi, skin]))  # Displaying the ROI and Skin Detected Image
 
             k = cv2.waitKey(1)
 
-            if k == ord('s'):  # Pressing s , saves the current YCrCb color values
+            if k == ord('s'):       # Pressing s , saves the current YCrCb color values
                 pymsgbox.alert('Detected skin bounds saved', 'Saved')
-                np.save('lower_bound', lower_bound)
-                np.save('upper_bound', upper_bound)
+                print(lower_bound, upper_bound)
+                np.save(LOWER_BOUND, lower_bound)
+                np.save(UPPER_BOUND, upper_bound)
 
             if k == 27:  # Closing the program on press of Esc key
                 break
