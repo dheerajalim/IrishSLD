@@ -39,7 +39,7 @@ def video_roi(img):
 
 
 def frame_color_masking(roi, lower_bound, upper_bound):
-    ycrcb_image = cv2.cvtColor(roi, cv2.COLOR_BGR2YCR_CB)  # changing BGR to YCrCb color
+    ycrcb_image = cv2.cvtColor(roi, cv2.COLOR_BGR2YCR_CB)
     '''
     The inRange function simply returns a binary mask, where white pixels (255) represent pixels that fall into 
     the upper and lower limit range and black pixels (0) do not.
