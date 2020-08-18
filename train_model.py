@@ -1,3 +1,10 @@
+"""
+Filename : train_model.py
+Author : Dheeraj Alimchandani
+Date : 12-02-2020
+Usage : Training the model
+"""
+
 import IrishSLD_local.config as cnf
 import numpy as np
 import pickle
@@ -15,8 +22,8 @@ from keras.callbacks import ModelCheckpoint
 from keras.utils import plot_model
 from keras import backend as K
 import pymsgbox
+import matplotlib.pyplot as plt
 
-# K.image_dim_ordering('tf')
 os.environ["PATH"] += os.pathsep + 'C:/Program Files (x86)/Graphviz2.38/bin/'
 
 
@@ -40,18 +47,33 @@ class TrainModel:
     @staticmethod
     def __get_dumped_model(model_name):
 
-        # with open(cnf.PROJECT_FOLDER+'/'+model_name, 'rb') as model_dump:
         try:
             with open(cnf.PROJECT_FOLDER+ model_name, 'rb') as model_dump:
-                # with open(model_name, 'rb') as model_dump:              # Reading the dumped model
                 return np.array(pickle.load(model_dump), dtype=np.int32)  # Loading the model
         except (FileNotFoundError, NameError) as e:
             print('Error Occured : ', e)
             pymsgbox.alert(f'Error while loading the {model_name} model, Please Retry', 'Error')
 
-
+    def plot_graph(self, epoch_number, history, title):
+        plt.style.use("ggplot")
+        plt.figure(figsize=(12, 8))
+        plt.plot(np.arange(0, epoch_number), history.history["loss"], label="Train Loss")  # Plottting the Training loss
+        plt.plot(np.arange(0, epoch_number), history.history["val_loss"], label="Validation Loss")  # Plotting the Test Loss
+        plt.plot(np.arange(0, epoch_number), history.history["accuracy"],
+                 label="Train Accuracy")  # Plotting the Train Accuracy
+        plt.plot(np.arange(0, epoch_number), history.history["val_accuracy"],
+                 label="Validation Accuracy")  # Plotting the Test Accuracy
+        plt.title(f'Training/Test Loss and Accuracy {title}')
+        plt.xlabel("Number of Epoch")
+        plt.ylabel("Loss/Accuracy")
+        plt.legend()
+        plt.show()
 
     def keras_cnn_model(self):
+        """
+        Generating the Keras Neural Network Architecture
+        :return:
+        """
         model = Sequential()
         model.add(Conv2D(16, (2, 2), input_shape=(self.x_dimension, self.y_dimension, 1), activation='relu'))
         model.add(MaxPooling2D(pool_size=(2, 2), strides=(2, 2), padding='same'))
@@ -60,8 +82,10 @@ class TrainModel:
         model.add(Conv2D(64, (5, 5), activation='relu'))
         model.add(MaxPooling2D(pool_size=(5, 5), strides=(5, 5), padding='same'))
         model.add(Flatten())
-        model.add(Dense(128, activation='relu'))
-        model.add(Dropout(0.2))
+        model.add(Dense(128, activation='relu')) #128
+        model.add(Dropout(0.3))
+        model.add(Dense(256, activation='relu'))    # 256
+        model.add(Dropout(0.3))
         model.add(Dense(len(glob(f'{cnf.GESTURE_DESTINATION}/*')), activation='softmax'))
         sgd = optimizers.SGD(lr=1e-2)
         model.compile(loss='categorical_crossentropy', optimizer=sgd, metrics=['accuracy'])
@@ -86,13 +110,6 @@ class TrainModel:
 
         x_dimension, y_dimension = self.__get_image_dimensions()  # Getting the image dimensions
 
-        # print(train_images.shape)
-        # print(validation_images.shape)
-        # print(train_labels.shape)
-        # print(validation_labels.shape)
-        # print(train_labels)
-        # print('--------------')
-
         '''Reshaping the images for the keras model'''
         train_images = np.reshape(train_images, (train_images.shape[0], x_dimension, y_dimension, 1))
         validation_images = np.reshape(validation_images, (validation_images.shape[0], x_dimension, y_dimension, 1))
@@ -101,24 +118,18 @@ class TrainModel:
         train_labels = np_utils.to_categorical(train_labels)
         validation_labels = np_utils.to_categorical(validation_labels)
 
-        # print(train_images.shape)
-        # print(validation_images.shape)
-        # print(train_labels.shape)
-        # print(validation_labels.shape)
-        # print(train_labels)
-        # exit()
-
         print('Calling the CNN Model')
         pymsgbox.alert('Calling the CNN Model', 'Message', timeout=1000)
         model, callbacks_list = self.keras_cnn_model()  # Calling the CNN
         model.summary()  # Generating the summary
-        model.fit(train_images, train_labels, validation_data=(validation_images, validation_labels), epochs=cnf.EPOCHS,
+        history = model.fit(train_images, train_labels, validation_data=(validation_images, validation_labels), epochs=cnf.EPOCHS,
                   batch_size=cnf.BATCH_SIZE, callbacks=callbacks_list)
+        self.plot_graph(cnf.EPOCHS, history, title='Training Plot')
 
-        scores = model.evaluate(validation_images, validation_labels, verbose=0)  # getting the model score
+        scores = model.evaluate(validation_images, validation_labels)  # getting the model score
 
         accuracy = scores[1] * 100
-        cnn_error = 100 - accuracy
+        cnn_error = scores[0]
         print("CNN Error: %.2f%%" % cnn_error)
         print("CNN Accuracy: %.2f%%" % accuracy)
 
@@ -132,4 +143,3 @@ class TrainModel:
 if __name__ == '__main__':
     train_model = TrainModel()
     train_model.train_model()
-    # K.clear_session()

@@ -1,7 +1,11 @@
+"""
+Filename : gesture_prediction.py
+Author : Dheeraj Alimchandani
+Date : 12-02-2020
+Usage : Prediction of gesture
+"""
+
 import IrishSLD_local.config as cnf
-import cv2, pickle
-import numpy as np
-import tensorflow as tf
 import os
 import sqlite3, pyttsx3
 from keras.models import load_model
@@ -22,8 +26,14 @@ class GesturePrediction:
         self.is_voice_on = True
 
     def text_to_speech(self, text):
+        """
+        The method converts generated text to speech
+        :param text: Input text
+        :return: Speech for the inputted text
+        """
         engine = pyttsx3.init()
         engine.setProperty('rate', 150)
+
         if not self.is_voice_on:
             return
         while engine._inLoop:
@@ -32,14 +42,22 @@ class GesturePrediction:
         engine.runAndWait()
 
     def __get_image_dimensions(self):
+        """
+        The method finds the dimensions of the image that is used for training the dataset
+        :return: x and y dimension of the image
+        """
         path = os.listdir(cnf.GESTURE_DESTINATION)[0]
         image_name = os.listdir(f'{cnf.GESTURE_DESTINATION}/{path}')[0]
         image = cv2.imread(f'{cnf.GESTURE_DESTINATION}/{path}/{image_name}', 0)
         self.x_dimension, self.y_dimension = image.shape
         return self.x_dimension, self.y_dimension
 
-
     def preprocessing_image(self, img):
+        """
+        Preprocessing the image before predicting the gesture
+        :param img: Input Image
+        :return: Processed image
+        """
         x_dimension, y_dimension = self.__get_image_dimensions()
         img = cv2.resize(img, (x_dimension, y_dimension))
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -50,15 +68,14 @@ class GesturePrediction:
         return img
 
     def predicting_gesture(self, model, image):
-        processed_image = self.preprocessing_image(image)
-        prediction_values = model.predict(processed_image)[0]
-        prediction_labels = list(prediction_values).index(max(prediction_values))
+        processed_image = self.preprocessing_image(image)   # getting the processed image
+        prediction_values = model.predict(processed_image)[0]   # getting the prediction probabilities of the gesture
+        prediction_labels = list(prediction_values).index(max(prediction_values))   # selecting the label with maximum probability
         return max(prediction_values), prediction_labels
 
     def predicted_gesture_detail_db(self, prediction_labels):
-        print('pred class' + str(prediction_labels))
         conn = sqlite3.connect(cnf.GESTURE_DB)
-        cmd = "SELECT gesture_detail FROM isl_gesture WHERE gesture_id=" + str(prediction_labels)
+        cmd = "SELECT gesture_detail FROM isl_gesture WHERE gesture_id=" + str(prediction_labels)   #getting gesture details from the DB
         cursor = conn.execute(cmd)
         for row in cursor:
             return row[0]
@@ -83,71 +100,63 @@ class GesturePrediction:
     def capture_gesture(self):
         detected_text = ""
         generated_word = ""
+        correct_generated_word = ""
         consistent_gesture_frame = 0
 
         self.cap = capture_video()
-
-        self.kernel = morphological_kernel()    # Creating the Kernel definition
 
         while True:
             _, img = self.cap.read()  # reading the captured frame
             img, roi = video_roi(img)
             lower_bound, upper_bound = load_bounds()
             skin = frame_color_masking(roi, lower_bound, upper_bound)
-            skin = morphological_transformations(skin, self.kernel, 2, 7)
+            skin = morphological_transformations(skin)
 
             '''generating contours'''
             edged = cv2.Canny(skin, 100, 255)
-            cv2.imshow('test', edged)
-            contours, _ = cv2.findContours(edged.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+            cv2.imshow('Canny Edged', edged)
+            contours, _ = cv2.findContours(edged.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
 
             available_text = detected_text
 
             if len(contours) > 0:   # Executing only if the contours are  greater than 0
-
+                correct_generated_word = ""
                 contour = max(contours, key=cv2.contourArea)
-                print('area '+str(cv2.contourArea(contour)))
-                if cv2.contourArea(contour) > 10:
-                    print('inside')
-                    detected_text = self.predict_gesture_contour(contour, skin)
 
+                if cv2.contourArea(contour) >= 75: #90
+
+                    detected_text = self.predict_gesture_contour(contour, skin)
+                    if detected_text == ' ':
+                        detected_text = 'space'
                     if available_text == detected_text:
                         consistent_gesture_frame += 1
                     else:
                         consistent_gesture_frame = 0
 
                     if consistent_gesture_frame > 10:
-                        if len(detected_text) == 1:
-                            Thread(target=self.text_to_speech, args=(detected_text,)).start()
-                        generated_word = generated_word + detected_text
-                        if generated_word.startswith('I/Me '):
-                            generated_word = generated_word.replace('I/Me ', 'I ')
-                        elif generated_word.endswith('I/Me '):
-                            generated_word = generated_word.replace('I/Me ', 'me ')
-                        consistent_gesture_frame = 0
 
-                elif cv2.contourArea(contour) < 1000:
-                    if generated_word != '':
-                        check = Speller(lang='en')
-                        generated_word = check(generated_word.lower())
-                        print(generated_word)
-                        Thread(target=self.text_to_speech, args=(generated_word,)).start()
-                    detected_text = ""
-                    generated_word = ""
+                        if detected_text == 'space':
+                            detected_text = '_'
+                        generated_word = generated_word + detected_text
+
+                        consistent_gesture_frame = 0
 
             else:
                 if generated_word != '':
                     check = Speller(lang='en')
-                    generated_word = check(generated_word.lower())
-                    print(generated_word)
-                    Thread(target=self.text_to_speech, args=(generated_word,)).start()
+                    generated_word = generated_word.replace('_',' ')
+                    correct_generated_word = check(generated_word.lower()).upper()
+
+                    Thread(target=self.text_to_speech, args=(correct_generated_word,)).start()
+
                 detected_text = ""
                 generated_word = ""
 
             prediction_screen = np.zeros((480, 640, 3), dtype=np.uint8)
-            # cv2.putText(prediction_screen, "Text Mode", (180, 50), cv2.FONT_HERSHEY_TRIPLEX, 1.5, (255, 0, 0))
             cv2.putText(prediction_screen, "Predicted text- " + detected_text, (10, 50), cv2.FONT_HERSHEY_DUPLEX, 0.5, (255, 255, 255))
             cv2.putText(prediction_screen, generated_word, (30, 240), cv2.FONT_HERSHEY_DUPLEX, 1, (255, 255, 255))
+            cv2.putText(prediction_screen, correct_generated_word, (30, 240), cv2.FONT_HERSHEY_DUPLEX, 1, (255, 255, 255))
+
             if self.is_voice_on:
                 cv2.putText(prediction_screen, "Voice on", (550, 460), cv2.FONT_HERSHEY_DUPLEX, 0.4, (255, 127, 0))
             else:
@@ -164,7 +173,7 @@ class GesturePrediction:
 
             if k == ord('v') and self.is_voice_on:
                 self.is_voice_on = False
-            if k == ord('v') and not self.is_voice_on:
+            elif k == ord('v') and not self.is_voice_on:
                 self.is_voice_on = True
 
         self.cap.release()

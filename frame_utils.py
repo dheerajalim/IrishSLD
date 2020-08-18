@@ -1,12 +1,9 @@
 """
-Filename : frame_utils.py
-Author : Dheeraj Alimchandani
-Date : 20-02-2020
-Usage : Contains the utility functions for the video frames
+The python script contains all the utility functions.
 """
-
 import cv2
 import numpy as np
+
 from .config import *
 
 
@@ -19,16 +16,10 @@ def capture_video():
     return cap
 
 
-def morphological_kernel():
-    kernel = np.ones((5, 5), np.uint8)
-    return kernel
-
-
-def morphological_transformations(skin, kernel, iterations, ksize):
-    dilation = cv2.dilate(skin, kernel, iterations=iterations)
-    erode = cv2.erode(dilation, kernel, iterations=iterations)
-    median_blur = cv2.medianBlur(erode, ksize=ksize)
-    return median_blur
+def morphological_transformations(skin):
+    blur = cv2.GaussianBlur(skin, (11, 11), 0)  # generating the gaussian blur
+    blur = cv2.medianBlur(blur, 15)  # generating the median blur
+    return blur
 
 
 def video_roi(img):
@@ -56,4 +47,3 @@ def load_bounds():
     upper_bound = np.load(UPPER_BOUND)
 
     return lower_bound, upper_bound
-
